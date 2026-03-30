@@ -201,6 +201,9 @@ const Index = () => {
             <span className="text-xl font-bold text-foreground">DigitRec</span>
           </div>
           <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/test")}>
+              Test
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => document.getElementById("about")?.scrollIntoView({ behavior: "smooth" })}>
               À propos
             </Button>

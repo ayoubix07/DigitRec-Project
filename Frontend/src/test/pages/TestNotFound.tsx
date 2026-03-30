@@ -12,19 +12,19 @@ const TestNotFound = () => {
   return (
     <div className="legacy-test-not-found">
       <div className="legacy-test-not-found__card">
-        <div className="legacy-test-not-found__eyebrow">DigitRec Workspace</div>
+        <div className="legacy-test-not-found__eyebrow">DigitRec</div>
         <h1 className="legacy-test-not-found__code">404</h1>
-        <h2 className="legacy-test-not-found__title">This page doesn&apos;t exist here.</h2>
+        <h2 className="legacy-test-not-found__title">Cette page n&apos;existe pas.</h2>
         <p className="legacy-test-not-found__subtitle">
-          The address you opened does not match any page in this workspace. You can head back
-          to the entry screen or jump straight into registration.
+          L&apos;adresse demandée ne correspond à aucune page disponible. Vous pouvez revenir à
+          l&apos;accueil ou accéder directement à l&apos;inscription.
         </p>
         <div className="legacy-test-not-found__actions">
           <Link className="legacy-test-not-found__link legacy-test-not-found__link--primary" to="/test">
-            Go to Workspace Home
+            Retour à l&apos;accueil
           </Link>
           <Link className="legacy-test-not-found__link" to="/test/register">
-            Open Register
+            Ouvrir l&apos;inscription
           </Link>
         </div>
       </div>

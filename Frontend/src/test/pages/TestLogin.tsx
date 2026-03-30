@@ -1,10 +1,12 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import TestAuthShell from "./TestAuthShell";
+import { useTestLoadingBar } from "../components/TestLoadingBarProvider";
 import { getSession, signInWithPassword } from "../services/testAuthService";
+import TestAuthShell from "./TestAuthShell";
 
 const TestLogin = () => {
   const navigate = useNavigate();
+  const { startLoading } = useTestLoadingBar();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -12,14 +14,19 @@ const TestLogin = () => {
 
   useEffect(() => {
     let active = true;
+    const stopLoading = startLoading();
 
     const checkSession = async () => {
-      const sessionResult = await getSession();
+      try {
+        const sessionResult = await getSession();
 
-      if (!active) return;
+        if (!active) return;
 
-      if (sessionResult.data) {
-        navigate("/test/dashboard", { replace: true });
+        if (sessionResult.data) {
+          navigate("/test/dashboard", { replace: true });
+        }
+      } finally {
+        stopLoading();
       }
     };
 
@@ -27,40 +34,51 @@ const TestLogin = () => {
 
     return () => {
       active = false;
+      stopLoading();
     };
-  }, [navigate]);
+  }, [navigate, startLoading]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
     setMessage("");
+    const stopLoading = startLoading();
 
-    const result = await signInWithPassword(email, password);
+    try {
+      const result = await signInWithPassword(email, password);
 
-    setLoading(false);
+      if (result.error) {
+        setMessage(result.error.message);
+        return;
+      }
 
-    if (result.error) {
-      setMessage(result.error.message);
-      return;
+      navigate("/test/dashboard", { replace: true });
+    } finally {
+      setLoading(false);
+      stopLoading();
     }
-
-    navigate("/test/dashboard", { replace: true });
   };
 
   return (
     <TestAuthShell
-      eyebrow="DigitRec Workspace"
-      title="Lead the build. Energize the launch."
-      subtitle="Reconnect with the original sign-in flow, now integrated cleanly so we can keep its look and behavior without spilling into the main product."
-      heroStatLeft="Identity-first"
-      heroStatRight="Safe"
-      image="https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80"
-      imageAlt="Team working with modern technology"
+      eyebrow="Connexion"
+      title="Accédez à votre espace de travail."
+      subtitle="Retrouvez votre tableau de bord, vos offres, vos candidatures et tout votre suivi recrutement dans un espace clair et fluide."
+      highlights={[
+        "Centralisez vos offres, vos candidatures et vos étapes d'évaluation.",
+        "Gardez une vue simple sur votre activité, côté candidat comme côté entreprise.",
+        "Travaillez dans une interface sobre, professionnelle et pensée pour aller à l'essentiel.",
+      ]}
+      stats={[
+        { label: "Expérience", value: "Fluide" },
+        { label: "Pilotage", value: "Centralisé" },
+      ]}
+      titleClassName="legacy-auth-hero__title--login"
     >
-      <div className="legacy-auth-card__badge">Welcome Back</div>
-      <h2 className="legacy-auth-card__title">Sign in</h2>
+      <div className="legacy-auth-card__badge">Connexion</div>
+      <h2 className="legacy-auth-card__title">Bon retour sur DigitRec</h2>
       <p className="legacy-auth-card__subtitle">
-        Access your workspace and continue from where you left off.
+        Connectez-vous pour retrouver votre espace candidat ou entreprise.
       </p>
 
       <form className="legacy-auth-form" onSubmit={handleSubmit}>
@@ -72,7 +90,8 @@ const TestLogin = () => {
             id="test-login-email"
             className="legacy-auth-input"
             type="email"
-            placeholder="you@email.com"
+            autoComplete="email"
+            placeholder="vous@entreprise.com"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
@@ -80,29 +99,30 @@ const TestLogin = () => {
 
         <div className="legacy-auth-field">
           <label className="legacy-auth-label" htmlFor="test-login-password">
-            Password
+            Mot de passe
           </label>
           <input
             id="test-login-password"
             className="legacy-auth-input"
             type="password"
-            placeholder="Enter your password"
+            autoComplete="current-password"
+            placeholder="Entrez votre mot de passe"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
         </div>
 
         <button className="legacy-auth-submit" type="submit" disabled={loading}>
-          {loading ? "Signing in..." : "Sign in to DigitRec"}
+          {loading ? "Connexion..." : "Se connecter"}
         </button>
       </form>
 
       {message ? <div className="legacy-auth-message legacy-auth-message--error">{message}</div> : null}
 
       <p className="legacy-auth-footer">
-        New here?{" "}
+        Pas encore de compte ?{" "}
         <Link className="legacy-auth-link" to="/test/register">
-          Create an account
+          Créer un compte
         </Link>
       </p>
     </TestAuthShell>

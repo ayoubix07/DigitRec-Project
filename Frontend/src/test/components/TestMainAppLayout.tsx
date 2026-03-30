@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import TestSidebar from "./TestSidebar";
 import TestTopbar from "./TestTopbar";
 import "../styles/test-shell.css";
+import "../styles/test-workspace.css";
 
 const TestMainAppLayout = () => {
   const [collapsed, setCollapsed] = useState(false);

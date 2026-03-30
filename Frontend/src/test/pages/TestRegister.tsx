@@ -1,23 +1,25 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import TestAuthShell from "./TestAuthShell";
+import { useTestLoadingBar } from "../components/TestLoadingBarProvider";
 import { getSession, registerCandidate, registerCompany } from "../services/testAuthService";
+import TestAuthShell from "./TestAuthShell";
 
 const accountTypes = [
   {
     value: "candidate",
-    label: "Candidate",
-    description: "Create your profile, upload your background, and get ready to apply.",
+    label: "Candidat",
+    description: "Créez votre profil, ajoutez votre CV et préparez vos candidatures.",
   },
   {
     value: "company",
-    label: "Company",
-    description: "Open a workspace for your team and start managing recruitment.",
+    label: "Entreprise",
+    description: "Ouvrez un espace équipe et commencez à piloter votre recrutement.",
   },
 ] as const;
 
 const TestRegister = () => {
   const navigate = useNavigate();
+  const { startLoading } = useTestLoadingBar();
   const [accountType, setAccountType] = useState<"candidate" | "company">("candidate");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -35,14 +37,19 @@ const TestRegister = () => {
 
   useEffect(() => {
     let active = true;
+    const stopLoading = startLoading();
 
     const checkSession = async () => {
-      const sessionResult = await getSession();
+      try {
+        const sessionResult = await getSession();
 
-      if (!active) return;
+        if (!active) return;
 
-      if (sessionResult.data) {
-        navigate("/test/dashboard", { replace: true });
+        if (sessionResult.data) {
+          navigate("/test/dashboard", { replace: true });
+        }
+      } finally {
+        stopLoading();
       }
     };
 
@@ -50,71 +57,82 @@ const TestRegister = () => {
 
     return () => {
       active = false;
+      stopLoading();
     };
-  }, [navigate]);
+  }, [navigate, startLoading]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
     setMessage("");
+    const stopLoading = startLoading();
 
-    const result =
-      accountType === "candidate"
-        ? await registerCandidate({
-            cin,
-            cvFile,
-            email,
-            firstName,
-            lastName,
-            level,
-            password,
-            profile,
-            title,
-          })
-        : await registerCompany({
-            companyName,
-            email,
-            logoFile,
-            password,
-          });
+    try {
+      const result =
+        accountType === "candidate"
+          ? await registerCandidate({
+              cin,
+              cvFile,
+              email,
+              firstName,
+              lastName,
+              level,
+              password,
+              profile,
+              title,
+            })
+          : await registerCompany({
+              companyName,
+              email,
+              logoFile,
+              password,
+            });
 
-    setLoading(false);
+      if (result.error) {
+        setMessage(result.error.message);
+        return;
+      }
 
-    if (result.error) {
-      setMessage(result.error.message);
-      return;
+      if (result.data?.auth.session) {
+        navigate("/test/dashboard", { replace: true });
+        return;
+      }
+
+      const warning = result.data?.uploadWarning ? ` ${result.data.uploadWarning}` : "";
+      setMessage(
+        `Compte créé. Vérifiez votre email pour confirmer l'inscription avant de vous connecter.${warning}`
+      );
+    } finally {
+      setLoading(false);
+      stopLoading();
     }
-
-    if (result.data?.auth.session) {
-      navigate("/test/dashboard", { replace: true });
-      return;
-    }
-
-    const warning = result.data?.uploadWarning ? ` ${result.data.uploadWarning}` : "";
-    setMessage(
-      `Account created. Check your email to confirm your registration before signing in.${warning}`
-    );
   };
 
   return (
     <TestAuthShell
-      eyebrow="DigitRec Workspace"
-      title="Build a profile that is ready to move."
-      subtitle="Choose the way you want to enter the platform, then complete the fields that match your role."
-      heroStatLeft="Candidate + Company"
-      heroStatRight="Structured"
-      image="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1200&q=80"
-      imageAlt="Hiring team collaborating in a workspace"
+      eyebrow="Inscription"
+      title="Créez un accès propre et prêt à l'emploi."
+      subtitle="Choisissez votre rôle, renseignez vos informations principales et préparez votre espace pour gérer vos candidatures ou votre recrutement."
+      highlights={[
+        "Créez rapidement un espace candidat ou entreprise.",
+        "Rassemblez vos informations essentielles dès la première connexion.",
+        "Commencez avec une interface claire et directement orientée métier.",
+      ]}
+      stats={[
+        { label: "Profils gérés", value: "Candidat + Entreprise" },
+        { label: "Expérience", value: "Simple" },
+      ]}
+      layout="card-only"
     >
-      <div className="legacy-auth-card__badge">Create Account</div>
-      <h2 className="legacy-auth-card__title">Register</h2>
+      <div className="legacy-auth-card__badge">Inscription</div>
+      <h2 className="legacy-auth-card__title">Créer votre accès</h2>
       <p className="legacy-auth-card__subtitle">
-        Set up your access and align your profile with the right workspace.
+        Configurez votre compte et alignez les champs affichés avec votre rôle.
       </p>
 
       <form className="legacy-auth-form" onSubmit={handleSubmit}>
         <div className="legacy-auth-field">
-          <span className="legacy-auth-label">Register as</span>
+          <span className="legacy-auth-label">Créer un compte en tant que</span>
           <div className="legacy-auth-role-grid">
             {accountTypes.map((type) => (
               <button
@@ -139,27 +157,29 @@ const TestRegister = () => {
             <div className="legacy-auth-grid legacy-auth-grid--2">
               <div className="legacy-auth-field">
                 <label className="legacy-auth-label" htmlFor="test-register-first-name">
-                  First name
+                  Prénom
                 </label>
                 <input
                   id="test-register-first-name"
                   className="legacy-auth-input"
+                  autoComplete="given-name"
                   value={firstName}
                   onChange={(event) => setFirstName(event.target.value)}
-                  placeholder="Jordan"
+                  placeholder="Salma"
                 />
               </div>
 
               <div className="legacy-auth-field">
                 <label className="legacy-auth-label" htmlFor="test-register-last-name">
-                  Last name
+                  Nom
                 </label>
                 <input
                   id="test-register-last-name"
                   className="legacy-auth-input"
+                  autoComplete="family-name"
                   value={lastName}
                   onChange={(event) => setLastName(event.target.value)}
-                  placeholder="Reed"
+                  placeholder="Idrissi"
                 />
               </div>
             </div>
@@ -180,47 +200,47 @@ const TestRegister = () => {
 
               <div className="legacy-auth-field">
                 <label className="legacy-auth-label" htmlFor="test-register-level">
-                  Level
+                  Niveau
                 </label>
                 <input
                   id="test-register-level"
                   className="legacy-auth-input"
                   value={level}
                   onChange={(event) => setLevel(event.target.value)}
-                  placeholder="Junior, Mid, Senior..."
+                  placeholder="Junior, Confirmé, Senior..."
                 />
               </div>
             </div>
 
             <div className="legacy-auth-field">
               <label className="legacy-auth-label" htmlFor="test-register-title">
-                Title
+                Intitulé
               </label>
               <input
                 id="test-register-title"
                 className="legacy-auth-input"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                placeholder="Frontend Developer"
+                placeholder="Développeur Frontend"
               />
             </div>
 
             <div className="legacy-auth-field">
               <label className="legacy-auth-label" htmlFor="test-register-profile">
-                Profile
+                Profil
               </label>
               <input
                 id="test-register-profile"
                 className="legacy-auth-input"
                 value={profile}
                 onChange={(event) => setProfile(event.target.value)}
-                placeholder="React, UI systems, testing..."
+                placeholder="React, design systems, tests..."
               />
             </div>
 
             <div className="legacy-auth-field">
               <label className="legacy-auth-label" htmlFor="test-register-cv-file">
-                CV Upload
+                CV
               </label>
               <input
                 id="test-register-cv-file"
@@ -230,7 +250,7 @@ const TestRegister = () => {
                 onChange={(event) => setCvFile(event.target.files?.[0] ?? null)}
               />
               <span className="legacy-auth-helper">
-                {cvFile ? `Selected: ${cvFile.name}` : "Upload a CV file instead of pasting a URL."}
+                {cvFile ? `Fichier sélectionné : ${cvFile.name}` : "Ajoutez un CV en PDF, DOC ou DOCX."}
               </span>
             </div>
           </>
@@ -238,11 +258,12 @@ const TestRegister = () => {
           <>
             <div className="legacy-auth-field">
               <label className="legacy-auth-label" htmlFor="test-register-company-name">
-                Company name
+                Nom de l'entreprise
               </label>
               <input
                 id="test-register-company-name"
                 className="legacy-auth-input"
+                autoComplete="organization"
                 value={companyName}
                 onChange={(event) => setCompanyName(event.target.value)}
                 placeholder="Atlas Recruitment"
@@ -251,7 +272,7 @@ const TestRegister = () => {
 
             <div className="legacy-auth-field">
               <label className="legacy-auth-label" htmlFor="test-register-logo-file">
-                Logo Upload
+                Logo
               </label>
               <input
                 id="test-register-logo-file"
@@ -261,7 +282,7 @@ const TestRegister = () => {
                 onChange={(event) => setLogoFile(event.target.files?.[0] ?? null)}
               />
               <span className="legacy-auth-helper">
-                {logoFile ? `Selected: ${logoFile.name}` : "Upload a logo file instead of pasting an image URL."}
+                {logoFile ? `Fichier sélectionné : ${logoFile.name}` : "Ajoutez un logo pour personnaliser l'espace entreprise."}
               </span>
             </div>
           </>
@@ -269,45 +290,47 @@ const TestRegister = () => {
 
         <div className="legacy-auth-field">
           <label className="legacy-auth-label" htmlFor="test-register-email">
-            {accountType === "company" ? "Professional email" : "Email"}
+            {accountType === "company" ? "Email professionnel" : "Email"}
           </label>
           <input
             id="test-register-email"
             className="legacy-auth-input"
             type="email"
+            autoComplete="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@email.com"
+            placeholder="vous@exemple.com"
           />
         </div>
 
         <div className="legacy-auth-field">
           <label className="legacy-auth-label" htmlFor="test-register-password">
-            Password
+            Mot de passe
           </label>
           <input
             id="test-register-password"
             className="legacy-auth-input"
             type="password"
+            autoComplete="new-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="Create a strong password"
+            placeholder="Créez un mot de passe robuste"
           />
         </div>
 
         <button className="legacy-auth-submit" type="submit" disabled={loading}>
           {loading
-            ? "Creating account..."
+            ? "Création..."
             : accountType === "candidate"
-              ? "Create candidate account"
-              : "Create company account"}
+              ? "Créer un compte candidat"
+              : "Créer un compte entreprise"}
         </button>
       </form>
 
       {message ? (
         <div
           className={
-            message.startsWith("Account created")
+            message.startsWith("Compte créé")
               ? "legacy-auth-message legacy-auth-message--info"
               : "legacy-auth-message legacy-auth-message--error"
           }
@@ -317,9 +340,9 @@ const TestRegister = () => {
       ) : null}
 
       <p className="legacy-auth-footer">
-        Already have an account?{" "}
+        Vous avez déjà un compte ?{" "}
         <Link className="legacy-auth-link" to="/test/login">
-          Sign in
+          Se connecter
         </Link>
       </p>
     </TestAuthShell>

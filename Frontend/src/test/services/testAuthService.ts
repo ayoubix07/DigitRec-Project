@@ -152,8 +152,8 @@ async function uploadRegistrationFileSafely(
       path: null,
       warning:
         kind === "candidateCv"
-          ? `CV upload skipped: ${issue.message}`
-          : `Logo upload skipped: ${issue.message}`,
+          ? `L'envoi du CV a été ignoré : ${issue.message}`
+          : `L'envoi du logo a été ignoré : ${issue.message}`,
     };
   }
 }
@@ -169,18 +169,18 @@ function getDisplayName(
     const lastName =
       (profile?.nom as string | undefined) ?? authUser.user_metadata?.nom;
     const fullName = [firstName, lastName].filter(Boolean).join(" ").trim();
-    return fullName || "Candidate account";
+    return fullName || "Compte candidat";
   }
 
   if (accountType === "company") {
     return (
       (profile?.nom as string | undefined) ??
       authUser.user_metadata?.company_name ??
-      "Company account"
+      "Compte entreprise"
     );
   }
 
-  return authUser.email || "User account";
+  return authUser.email || "Compte utilisateur";
 }
 
 async function insertProfile(
@@ -304,7 +304,7 @@ export function registerCandidate(payload: CandidateRegistrationPayload) {
         level: toNullable(payload.level),
         cv_url: uploadResult.path,
       },
-      "Candidate profile creation failed."
+      "La création du profil candidat a échoué."
     );
 
     return {
@@ -345,7 +345,7 @@ export function registerCompany(payload: CompanyRegistrationPayload) {
         email_prof: email,
         logo_url: uploadResult.path,
       },
-      "Company profile creation failed."
+      "La création du profil entreprise a échoué."
     );
 
     return {
@@ -365,7 +365,7 @@ export function resolveCurrentProfile() {
     } = await testSupabase.auth.getUser();
 
     if (error) throw error;
-    if (!user) throw new Error("No authenticated Supabase user was found.");
+    if (!user) throw new Error("Aucun utilisateur connecté n'a été trouvé.");
 
     const preferredType = user.user_metadata?.user_type as
       | "candidate"
