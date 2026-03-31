@@ -1,5 +1,5 @@
 import { User } from "@supabase/supabase-js";
-import { testSupabase } from "./testSupabaseClient";
+import { supabase } from "./supabaseClient";
 
 type NormalizedError = {
   code?: string;
@@ -12,18 +12,6 @@ type NormalizedError = {
 type ServiceResult<T> = {
   data: T | null;
   error: NormalizedError | null;
-};
-
-type CandidateRegistrationPayload = {
-  cin: string;
-  email: string;
-  cvFile: File | null;
-  firstName: string;
-  lastName: string;
-  level: string;
-  password: string;
-  profile: string;
-  title: string;
 };
 
 type CompanyRegistrationPayload = {
@@ -81,19 +69,9 @@ async function run<T>(task: () => Promise<T>): Promise<ServiceResult<T>> {
   }
 }
 
-function toNullable(value: string) {
-  const trimmed = value.trim();
-  return trimmed ? trimmed : null;
-}
-
-function getBucketName(kind: "candidateCv" | "companyLogo") {
+function getBucketName() {
   const env = import.meta.env as unknown as Record<string, string | undefined>;
-
-  if (kind === "candidateCv") {
-    return env.VITE_TEST_SUPABASE_CV_BUCKET ?? "candidate-cvs";
-  }
-
-  return env.VITE_TEST_SUPABASE_LOGO_BUCKET ?? "company-logos";
+  return env.VITE_SUPABASE_LOGO_BUCKET ?? env.VITE_TEST_SUPABASE_LOGO_BUCKET ?? "company-logos";
 }
 
 function buildStoragePath(folder: string, file: File) {
@@ -112,17 +90,12 @@ function buildStoragePath(folder: string, file: File) {
   return `${folder}/${safeBaseName || "file"}-${uniqueId}.${extension}`;
 }
 
-async function uploadRegistrationFile(
-  kind: "candidateCv" | "companyLogo",
-  file: File,
-  email: string
-) {
-  const bucket = getBucketName(kind);
-  const folder = kind === "candidateCv" ? "candidate-cvs" : "company-logos";
+async function uploadCompanyLogo(file: File, email: string) {
+  const bucket = getBucketName();
   const ownerFolder = email.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
-  const path = buildStoragePath(`${folder}/${ownerFolder}`, file);
+  const path = buildStoragePath(`company-logos/${ownerFolder}`, file);
 
-  const { error } = await testSupabase.storage.from(bucket).upload(path, file, {
+  const { error } = await supabase.storage.from(bucket).upload(path, file, {
     cacheControl: "3600",
     upsert: false,
   });
@@ -134,8 +107,7 @@ async function uploadRegistrationFile(
   return path;
 }
 
-async function uploadRegistrationFileSafely(
-  kind: "candidateCv" | "companyLogo",
+async function uploadCompanyLogoSafely(
   file: File | null,
   email: string
 ): Promise<RegistrationUploadResult> {
@@ -144,16 +116,13 @@ async function uploadRegistrationFileSafely(
   }
 
   try {
-    const path = await uploadRegistrationFile(kind, file, email);
+    const path = await uploadCompanyLogo(file, email);
     return { path, warning: null };
   } catch (error) {
     const issue = normalizeError(error);
     return {
       path: null,
-      warning:
-        kind === "candidateCv"
-          ? `L'envoi du CV a été ignoré : ${issue.message}`
-          : `L'envoi du logo a été ignoré : ${issue.message}`,
+      warning: `L'envoi du logo a été ignoré : ${issue.message}`,
     };
   }
 }
@@ -183,16 +152,8 @@ function getDisplayName(
   return authUser.email || "Compte utilisateur";
 }
 
-async function insertProfile(
-  table: "candidats" | "entreprises",
-  payload: Record<string, unknown>,
-  failureMessage: string
-) {
-  const { data, error } = await testSupabase
-    .from(table)
-    .insert(payload)
-    .select()
-    .single();
+async function insertProfile(payload: Record<string, unknown>, failureMessage: string) {
+  const { data, error } = await supabase.from("entreprises").insert(payload).select().single();
 
   if (error) {
     throw new Error(error.message || failureMessage);
@@ -206,7 +167,7 @@ async function fetchLatestProfile(
   column: string,
   value: string
 ) {
-  const { data, error } = await testSupabase
+  const { data, error } = await supabase
     .from(table)
     .select("*")
     .eq(column, value)
@@ -221,24 +182,12 @@ async function fetchLatestProfile(
   return data as Record<string, unknown> | null;
 }
 
-export function getCurrentUser() {
-  return run(async () => {
-    const {
-      data: { user },
-      error,
-    } = await testSupabase.auth.getUser();
-
-    if (error) throw error;
-    return user;
-  });
-}
-
 export function getSession() {
   return run(async () => {
     const {
       data: { session },
       error,
-    } = await testSupabase.auth.getSession();
+    } = await supabase.auth.getSession();
 
     if (error) throw error;
     return session;
@@ -247,7 +196,7 @@ export function getSession() {
 
 export function signInWithPassword(email: string, password: string) {
   return run(async () => {
-    const { data, error } = await testSupabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
       password,
     });
@@ -259,67 +208,16 @@ export function signInWithPassword(email: string, password: string) {
 
 export function signOut() {
   return run(async () => {
-    const { error } = await testSupabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
     if (error) throw error;
     return true;
-  });
-}
-
-export function registerCandidate(payload: CandidateRegistrationPayload) {
-  return run(async () => {
-    const email = payload.email.trim().toLowerCase();
-    const { data: authData, error: authError } = await testSupabase.auth.signUp({
-      email,
-      password: payload.password,
-      options: {
-        data: {
-          user_type: "candidate",
-          prenom: payload.firstName.trim(),
-          nom: payload.lastName.trim(),
-          cin: toNullable(payload.cin),
-          title: toNullable(payload.title),
-          profile: toNullable(payload.profile),
-          level: toNullable(payload.level),
-        },
-      },
-    });
-
-    if (authError) throw authError;
-
-    const uploadResult = await uploadRegistrationFileSafely(
-      "candidateCv",
-      payload.cvFile,
-      email
-    );
-
-    const profile = await insertProfile(
-      "candidats",
-      {
-        prenom: payload.firstName.trim(),
-        nom: payload.lastName.trim(),
-        email,
-        cin: toNullable(payload.cin),
-        title: toNullable(payload.title),
-        profile: toNullable(payload.profile),
-        level: toNullable(payload.level),
-        cv_url: uploadResult.path,
-      },
-      "La création du profil candidat a échoué."
-    );
-
-    return {
-      accountType: "candidate",
-      auth: authData,
-      profile,
-      uploadWarning: uploadResult.warning,
-    };
   });
 }
 
 export function registerCompany(payload: CompanyRegistrationPayload) {
   return run(async () => {
     const email = payload.email.trim().toLowerCase();
-    const { data: authData, error: authError } = await testSupabase.auth.signUp({
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password: payload.password,
       options: {
@@ -332,14 +230,9 @@ export function registerCompany(payload: CompanyRegistrationPayload) {
 
     if (authError) throw authError;
 
-    const uploadResult = await uploadRegistrationFileSafely(
-      "companyLogo",
-      payload.logoFile,
-      email
-    );
+    const uploadResult = await uploadCompanyLogoSafely(payload.logoFile, email);
 
     const profile = await insertProfile(
-      "entreprises",
       {
         nom: payload.companyName.trim(),
         email_prof: email,
@@ -362,7 +255,7 @@ export function resolveCurrentProfile() {
     const {
       data: { user },
       error,
-    } = await testSupabase.auth.getUser();
+    } = await supabase.auth.getUser();
 
     if (error) throw error;
     if (!user) throw new Error("Aucun utilisateur connecté n'a été trouvé.");
@@ -438,10 +331,4 @@ export function resolveCurrentProfile() {
       source: null,
     };
   });
-}
-
-export function onAuthStateChange(
-  callback: Parameters<typeof testSupabase.auth.onAuthStateChange>[0]
-) {
-  return testSupabase.auth.onAuthStateChange(callback);
 }
