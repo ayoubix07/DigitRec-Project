@@ -1,67 +1,101 @@
 import {
+  BriefcaseBusiness,
+  ClipboardList,
   LayoutDashboard,
-  Briefcase,
+  Mic2,
+  ScrollText,
+  UserRound,
   Users,
-  Settings,
 } from "lucide-react";
-import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { NavLink } from "react-router-dom";
+import { useAccount } from "../hooks/useAccount";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "@/components/ui/sidebar";
+  candidateWorkspaceLinks,
+  companyWorkspaceLinks,
+  sharedWorkspaceLinks,
+  WorkspaceNavItem,
+} from "../lib/workspace";
 
-const items = [
-  { title: "Tableau de bord", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Mes Offres", url: "/dashboard/offers", icon: Briefcase },
-  { title: "Candidats", url: "/dashboard/candidates", icon: Users },
-  { title: "Paramètres", url: "/dashboard/settings", icon: Settings },
-];
+type AppSidebarProps = {
+  collapsed: boolean;
+};
 
-export function AppSidebar() {
-  const { state } = useSidebar();
-  const collapsed = state === "collapsed";
-  const location = useLocation();
-  const currentPath = location.pathname;
-  const isActive = (path: string) => currentPath === path;
+const iconByPath: Record<string, typeof LayoutDashboard> = {
+  "/dashboard": LayoutDashboard,
+  "/dashboard/profile": UserRound,
+  "/dashboard/offers": BriefcaseBusiness,
+  "/dashboard/applications": ClipboardList,
+  "/dashboard/written-tests": ScrollText,
+  "/dashboard/oral-tests": Mic2,
+  "/dashboard/candidates": Users,
+};
+
+function buildInitials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
+function SidebarLink({ collapsed, link }: { collapsed: boolean; link: WorkspaceNavItem }) {
+  const Icon = iconByPath[link.to] || LayoutDashboard;
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarContent>
-        <div className="flex h-14 items-center px-4">
-          {!collapsed && (
-            <div className="flex items-center gap-2">
-              <Briefcase className="h-5 w-5 text-sidebar-primary" />
-              <span className="text-sm font-bold text-sidebar-foreground">DigitRec</span>
-            </div>
-          )}
-          {collapsed && <Briefcase className="mx-auto h-5 w-5 text-sidebar-primary" />}
-        </div>
-        <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url} end>
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-    </Sidebar>
+    <NavLink
+      to={link.to}
+      end={link.to === "/dashboard"}
+      className={({ isActive }) =>
+        isActive ? "legacy-sidebar__link legacy-sidebar__link--active" : "legacy-sidebar__link"
+      }
+    >
+      <span className="legacy-sidebar__link-icon">
+        <Icon size={18} />
+      </span>
+      {!collapsed ? <span>{link.label}</span> : null}
+    </NavLink>
+  );
+}
+
+export function AppSidebar({ collapsed }: AppSidebarProps) {
+  const { account } = useAccount();
+  const name = account?.displayName || "Compte DigitRec";
+  const role =
+    account?.accountType === "candidate"
+      ? "Candidat"
+      : account?.accountType === "company"
+        ? "Entreprise"
+        : "Compte";
+  const initials = buildInitials(name) || "DR";
+
+  return (
+    <aside className={collapsed ? "legacy-sidebar legacy-sidebar--collapsed" : "legacy-sidebar"}>
+      <div className="legacy-sidebar__brand">
+        <div className="legacy-sidebar__logo">{initials}</div>
+        {!collapsed ? (
+          <div>
+            <div className="legacy-sidebar__title">{name}</div>
+            <div className="legacy-sidebar__subtitle">{role}</div>
+          </div>
+        ) : null}
+      </div>
+
+      <nav className="legacy-sidebar__nav">
+        {sharedWorkspaceLinks.map((link) => (
+          <SidebarLink key={link.to} collapsed={collapsed} link={link} />
+        ))}
+        {account?.accountType === "candidate"
+          ? candidateWorkspaceLinks.map((link) => (
+              <SidebarLink key={link.to} collapsed={collapsed} link={link} />
+            ))
+          : null}
+        {account?.accountType === "company"
+          ? companyWorkspaceLinks.map((link) => (
+              <SidebarLink key={link.to} collapsed={collapsed} link={link} />
+            ))
+          : null}
+      </nav>
+    </aside>
   );
 }

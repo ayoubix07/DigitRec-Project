@@ -1,53 +1,44 @@
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-
-const candidates = [
-  { id: 1, name: "Marie Dupont", role: "Développeur Full-Stack", stage: "Entretien technique", rating: 4.5 },
-  { id: 2, name: "Lucas Martin", role: "Product Designer", stage: "Screening", rating: 3.8 },
-  { id: 3, name: "Sophie Bernard", role: "Data Analyst", stage: "Offre finale", rating: 4.9 },
-  { id: 4, name: "Thomas Petit", role: "Chef de Projet", stage: "Réception CV", rating: 3.2 },
-  { id: 5, name: "Camille Robert", role: "Développeur Full-Stack", stage: "Entretien RH", rating: 4.1 },
-];
-
-const stageColor: Record<string, string> = {
-  "Réception CV": "secondary",
-  Screening: "outline",
-  "Entretien RH": "default",
-  "Entretien technique": "default",
-  "Offre finale": "default",
-};
+import RolePage from "../components/RolePage";
+import { companyCandidates } from "../lib/workspace";
+import "../styles/workspace.css";
 
 const Candidates = () => {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Candidats</h1>
-        <p className="text-sm text-muted-foreground">{candidates.length} candidats dans le pipeline</p>
-      </div>
-
-      <div className="grid gap-3">
-        {candidates.map((c) => (
-          <div
-            key={c.id}
-            className="flex items-center gap-4 rounded-xl border bg-card p-4 card-shadow transition-all hover:card-shadow-hover cursor-pointer"
-          >
-            <Avatar className="h-10 w-10">
-              <AvatarFallback className="bg-accent/10 text-accent text-sm font-medium">
-                {c.name.split(" ").map((n) => n[0]).join("")}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <p className="font-medium text-foreground">{c.name}</p>
-              <p className="text-sm text-muted-foreground">{c.role}</p>
+    <RolePage allow={["company"]}>
+      {() => (
+        <div className="legacy-workspace">
+          <section className="legacy-workspace__hero">
+            <div>
+              <div className="legacy-workspace__eyebrow">Espace entreprise</div>
+              <h1 className="legacy-workspace__title">Candidats</h1>
+              <p className="legacy-workspace__subtitle">
+                Suivez ici les profils en cours, leur progression et leur niveau d'adéquation
+                avec les postes ouverts.
+              </p>
             </div>
-            <Badge variant={(stageColor[c.stage] as "default" | "secondary" | "outline") || "secondary"}>
-              {c.stage}
-            </Badge>
-            <div className="text-sm font-medium text-foreground">{c.rating}/5</div>
-          </div>
-        ))}
-      </div>
-    </div>
+            <div className="legacy-workspace__hero-pill">{companyCandidates.length} en cours</div>
+          </section>
+
+          <section className="legacy-workspace__stack">
+            {companyCandidates.map((candidate) => (
+              <article key={candidate.id} className="legacy-workspace__panel">
+                <div className="legacy-workspace__panel-header">
+                  <div>
+                    <h2>{candidate.name}</h2>
+                    <span>{candidate.title}</span>
+                  </div>
+                  <div className="legacy-workspace__badges">
+                    <span className="legacy-workspace__badge legacy-workspace__badge--violet">{candidate.stage}</span>
+                    <span className="legacy-workspace__badge">{candidate.fit}</span>
+                  </div>
+                </div>
+                <p className="legacy-workspace__description">{candidate.note}</p>
+              </article>
+            ))}
+          </section>
+        </div>
+      )}
+    </RolePage>
   );
 };
 

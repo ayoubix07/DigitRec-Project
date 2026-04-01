@@ -1,107 +1,125 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Shield } from "lucide-react";
+import RolePage from "../components/RolePage";
+import {
+  candidateApplications,
+  companyCandidates,
+  companyOffers,
+  getDashboardMetrics,
+} from "../lib/workspace";
+import "../styles/dashboard.css";
+import "../styles/workspace.css";
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-  const [entrepriseId, setEntrepriseId] = useState<string>("");
-  const [entreprise, setEntreprise] = useState<{ nom_entreprise?: string }>({});
-  const [loading, setLoading] = useState(true);
-  const [dashboardData, setDashboardData] = useState<any>(null);
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    const id = localStorage.getItem("entreprise_id");
-    const entrepriseRaw = localStorage.getItem("entreprise");
-
-    if (!token || !id) {
-      navigate("/");
-      return;
-    }
-    setEntrepriseId(id);
-    setEntreprise(entrepriseRaw ? JSON.parse(entrepriseRaw) : {});
-
-    const fetchDashboard = async () => {
-      try {
-        const apiBase = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
-        const res = await fetch(`${apiBase}/api/dashboard`, {
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
-        if (!res.ok) {
-          throw new Error("Session invalide");
-        }
-        const data = await res.json();
-        setDashboardData(data);
-      } catch (error) {
-        localStorage.clear();
-        navigate("/");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboard();
-  }, [navigate]);
-
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate("/");
-  };
-
-  if (loading) {
-    return <div className="flex items-center justify-center min-h-screen">Chargement...</div>;
-  }
-
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card px-6 py-4">
-        <div className="container mx-auto flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <Badge variant="outline" className="gap-2 bg-blue-50 text-blue-700 border-blue-200">
-              <Shield className="h-3 w-3" />
-              ID: <code className="font-mono text-xs">{entrepriseId}</code>
-            </Badge>
-            <div>
-              <h1 className="text-xl font-bold">Dashboard - {entreprise?.nom_entreprise || "Votre entreprise"}</h1>
-              <p className="text-xs text-muted-foreground">Données isolées pour chaque entreprise.</p>
-            </div>
-          </div>
-          <Button variant="outline" onClick={handleLogout}>Déconnexion</Button>
-        </div>
-      </header>
+    <RolePage>
+      {(account) => {
+        const metrics = getDashboardMetrics(account.accountType);
+        const spotlightItems =
+          account.accountType === "candidate"
+            ? [
+                `Votre candidature pour ${candidateApplications[0]?.offerTitle} est actuellement a l'etape ${candidateApplications[0]?.stage}.`,
+                "Retrouvez ici l'etat de vos candidatures et les prochaines etapes a suivre.",
+                "Accedez rapidement a votre profil, a vos tests et a vos documents.",
+              ]
+            : [
+                `${companyOffers[0]?.title} est l'offre la plus active de votre espace.`,
+                `${companyCandidates[0]?.name} fait partie des profils les plus avances de votre suivi.`,
+                "Suivez vos offres, vos candidats et les prochaines actions depuis ce tableau de bord.",
+              ];
 
-      <main className="container mx-auto p-6">
-        <div className="rounded-lg border bg-card p-6 shadow-sm">
-          <h2 className="text-2xl font-semibold mb-2">Bienvenue dans votre espace sécurisé</h2>
-          <p className="text-muted-foreground">Aucune autre entreprise ne peut voir ces données.</p>
-          <div className="mt-4 rounded-md border bg-muted p-4">
-            <p className="text-sm"><strong>Entreprise ID :</strong> {entrepriseId}</p>
-            <p className="text-sm text-muted-foreground">Token JWT utilisé pour authentifier toutes les requêtes.</p>
-          </div>
-        </div>
+        const quickLinks =
+          account.accountType === "candidate"
+            ? [
+                { label: "Offres", value: "Consultez les opportunites disponibles et leurs criteres principaux." },
+                { label: "Candidatures", value: "Suivez l'avancement de vos dossiers et leurs statuts." },
+                { label: "Tests", value: "Retrouvez vos evaluations ecrites et orales au meme endroit." },
+              ]
+            : [
+                { label: "Mes offres", value: "Retrouvez vos postes ouverts et leur niveau d'activite." },
+                { label: "Candidats", value: "Consultez les profils en cours et leur progression." },
+                { label: "Profil", value: "Accedez aux informations generales de votre compte." },
+              ];
 
-        <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <div className="rounded-lg border bg-card p-4">
-            <h3 className="font-semibold">Offres ({dashboardData?.offres?.length ?? 0})</h3>
-            <ul className="mt-3 list-disc pl-5 text-sm text-muted-foreground">
-              {(dashboardData?.offres ?? []).slice(0, 5).map((o: any) => (
-                <li key={o.id}>{o.titre}</li>
+        const roleLabel =
+          account.accountType === "candidate"
+            ? "Candidat"
+            : account.accountType === "company"
+              ? "Entreprise"
+              : "Compte";
+
+        const workspaceFocus =
+          account.accountType === "candidate"
+            ? "Suivi des offres et candidatures"
+            : account.accountType === "company"
+              ? "Pilotage des offres et candidats"
+              : "Vue d'ensemble";
+
+        return (
+          <div className="legacy-workspace">
+            <section className="legacy-dashboard-hero">
+              <div>
+                <div className="legacy-dashboard-hero__eyebrow">Tableau de bord</div>
+                <h1 className="legacy-dashboard-hero__title">{account.displayName}</h1>
+                <p className="legacy-dashboard-hero__subtitle">id : {account.authUser.id}</p>
+                <p className="legacy-dashboard-hero__subtitle">
+                  Bienvenue sur votre tableau de bord. Vous pouvez y retrouver vos chiffres cles,
+                  suivre votre activite et acceder rapidement aux sections principales.
+                </p>
+              </div>
+              <div className="legacy-dashboard-hero__meta">
+                <div className="legacy-dashboard-hero__pill">{roleLabel}</div>
+                <div className="legacy-dashboard-hero__id-card">
+                  <div className="legacy-dashboard-hero__id-label">Vue principale</div>
+                  <div className="legacy-dashboard-hero__id-value">{workspaceFocus}</div>
+                </div>
+              </div>
+            </section>
+
+            <section className="legacy-workspace__metrics">
+              {metrics.map((metric) => (
+                <article
+                  key={metric.label}
+                  className={`legacy-workspace__panel legacy-workspace__metric legacy-workspace__metric--${metric.tone || "sky"}`}
+                >
+                  <div className="legacy-workspace__label">{metric.label}</div>
+                  <div className="legacy-workspace__metric-value">{metric.value}</div>
+                </article>
               ))}
-              {!dashboardData?.offres?.length && <li>Aucune offre créée.</li>}
-            </ul>
+            </section>
+
+            <section className="legacy-workspace__split">
+              <article className="legacy-workspace__panel">
+                <div className="legacy-workspace__panel-header">
+                  <h2>Apercu</h2>
+                  <span>Activite</span>
+                </div>
+                <div className="legacy-workspace__list">
+                  {spotlightItems.map((item) => (
+                    <div key={item} className="legacy-workspace__list-row">
+                      <div className="legacy-workspace__value">{item}</div>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className="legacy-workspace__panel">
+                <div className="legacy-workspace__panel-header">
+                  <h2>Acces rapides</h2>
+                  <span>Navigation</span>
+                </div>
+                <div className="legacy-workspace__list">
+                  {quickLinks.map((item) => (
+                    <div key={item.label} className="legacy-workspace__list-row">
+                      <div className="legacy-workspace__label">{item.label}</div>
+                      <div className="legacy-workspace__value">{item.value}</div>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            </section>
           </div>
-          <div className="rounded-lg border bg-card p-4">
-            <h3 className="font-semibold">Candidatures ({dashboardData?.candidatures?.length ?? 0})</h3>
-            <p className="mt-2 text-sm text-muted-foreground">Candidatures liées uniquement à vos offres.</p>
-          </div>
-        </div>
-      </main>
-    </div>
+        );
+      }}
+    </RolePage>
   );
 };
 

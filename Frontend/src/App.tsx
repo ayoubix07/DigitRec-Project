@@ -1,94 +1,57 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
 import DashboardLayout from "./components/DashboardLayout";
-import Dashboard from "./pages/Dashboard";
-import Offers from "./pages/Offers";
-import NewOffer from "./pages/NewOffer";
+import LoadingBarProvider from "./components/LoadingBarProvider";
+import RequireAuth from "./components/RequireAuth";
+import Applications from "./pages/Applications";
 import Candidates from "./pages/Candidates";
-import SettingsPage from "./pages/Settings";
-import TestEntryRedirect from "./test/pages/TestEntryRedirect";
-import TestLogin from "./test/pages/TestLogin";
-import TestRegister from "./test/pages/TestRegister";
-import TestDashboard from "./test/pages/TestDashboard";
-import TestProfile from "./test/pages/TestProfile";
-import TestOffersPage from "./test/pages/TestOffersPage";
-import TestApplicationsPage from "./test/pages/TestApplicationsPage";
-import TestWrittenTestsPage from "./test/pages/TestWrittenTestsPage";
-import TestOralTestsPage from "./test/pages/TestOralTestsPage";
-import TestCandidatesPage from "./test/pages/TestCandidatesPage";
-import TestNotFound from "./test/pages/TestNotFound";
-import TestRequireAuth from "./test/components/TestRequireAuth";
-import TestMainAppLayout from "./test/components/TestMainAppLayout";
-import TestLoadingBarProvider from "./test/components/TestLoadingBarProvider";
-
-const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
-  const token = localStorage.getItem("token");
-  const entrepriseId = localStorage.getItem("entreprise_id");
-  if (!token || !entrepriseId) {
-    return <Navigate to="/" replace />;
-  }
-  return <>{children}</>;
-};
+import Dashboard from "./pages/Dashboard";
+import Index from "./pages/Index";
+import Login from "./pages/Login";
+import NotFound from "./pages/NotFound";
+import Offers from "./pages/Offers";
+import OralTests from "./pages/OralTests";
+import Profile from "./pages/Profile";
+import Register from "./pages/Register";
+import WrittenTests from "./pages/WrittenTests";
 
 const queryClient = new QueryClient();
-
-const TestNamespaceLayout = () => (
-  <TestLoadingBarProvider>
-    <Outlet />
-  </TestLoadingBarProvider>
-);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/test" element={<TestNamespaceLayout />}>
-            <Route index element={<TestEntryRedirect />} />
-            <Route path="login" element={<TestLogin />} />
-            <Route path="register" element={<TestRegister />} />
+      <LoadingBarProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             <Route
+              path="/dashboard"
               element={
-                <TestRequireAuth>
-                  <TestMainAppLayout />
-                </TestRequireAuth>
+                <RequireAuth>
+                  <DashboardLayout />
+                </RequireAuth>
               }
             >
-              <Route path="dashboard" element={<TestDashboard />} />
-              <Route path="profile" element={<TestProfile />} />
-              <Route path="offers" element={<TestOffersPage />} />
-              <Route path="applications" element={<TestApplicationsPage />} />
-              <Route path="written-tests" element={<TestWrittenTestsPage />} />
-              <Route path="oral-tests" element={<TestOralTestsPage />} />
-              <Route path="candidates" element={<TestCandidatesPage />} />
+              <Route index element={<Dashboard />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="offers" element={<Offers />} />
+              <Route path="applications" element={<Applications />} />
+              <Route path="written-tests" element={<WrittenTests />} />
+              <Route path="oral-tests" element={<OralTests />} />
+              <Route path="candidates" element={<Candidates />} />
+              <Route path="settings" element={<Navigate to="/dashboard/profile" replace />} />
             </Route>
-            <Route path="*" element={<TestNotFound />} />
-          </Route>
-          <Route
-            path="/dashboard"
-            element={
-              <PrivateRoute>
-                <DashboardLayout />
-              </PrivateRoute>
-            }
-          >
-            <Route index element={<Dashboard />} />
-            <Route path="offers" element={<Offers />} />
-            <Route path="offers/new" element={<NewOffer />} />
-            <Route path="candidates" element={<Candidates />} />
-            <Route path="settings" element={<SettingsPage />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </LoadingBarProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

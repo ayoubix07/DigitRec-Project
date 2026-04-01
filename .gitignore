@@ -1,7 +1,5 @@
 # Dependencies
 Frontend/node_modules/
-backend/.venv/
-backend/venv/
 
 # Environment files
 .env

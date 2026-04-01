@@ -1,58 +1,52 @@
-import { useEffect } from "react";
-import { useNavigate, Outlet } from "react-router-dom";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { useEffect, useState } from "react";
+import { Outlet } from "react-router-dom";
 import { AppSidebar } from "@/components/AppSidebar";
-
-const isTokenValid = (token: string | null) => {
-  if (!token) return false;
-  try {
-    const parts = token.split(".");
-    if (parts.length !== 3) return false;
-    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
-    if (payload.exp && typeof payload.exp === "number") {
-      return Date.now() / 1000 < payload.exp;
-    }
-  } catch {
-    return false;
-  }
-  return true;
-};
+import Topbar from "@/components/Topbar";
+import "../styles/shell.css";
+import "../styles/workspace.css";
 
 const DashboardLayout = () => {
-  const navigate = useNavigate();
+  const [collapsed, setCollapsed] = useState(false);
+  const [compact, setCompact] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!isTokenValid(token)) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("entreprise");
-      navigate("/", { replace: true });
-    }
-    window.onpageshow = (event) => {
-      if (event.persisted) {
-        const sessionToken = localStorage.getItem("token");
-        if (!isTokenValid(sessionToken)) {
-          navigate("/", { replace: true });
-        }
-      }
+    const syncCompact = () => {
+      setCompact(window.innerWidth <= 980);
     };
-  }, [navigate]);
+
+    syncCompact();
+    window.addEventListener("resize", syncCompact);
+
+    return () => {
+      window.removeEventListener("resize", syncCompact);
+    };
+  }, []);
+
+  const effectiveCollapsed = compact || collapsed;
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AppSidebar />
-        <div className="flex-1 flex flex-col">
-          <header className="h-14 flex items-center border-b bg-card px-4">
-            <SidebarTrigger className="mr-4" />
-            <h1 className="text-lg font-semibold text-foreground">DigitRec</h1>
-          </header>
-          <main className="flex-1 overflow-auto bg-background p-6">
-            <Outlet />
-          </main>
-        </div>
+    <div className="legacy-shell">
+      <AppSidebar collapsed={effectiveCollapsed} />
+      <div
+        className={
+          effectiveCollapsed
+            ? "legacy-shell__content legacy-shell__content--expanded"
+            : "legacy-shell__content"
+        }
+      >
+        <Topbar
+          collapsed={effectiveCollapsed}
+          onToggleSidebar={() => {
+            if (!compact) {
+              setCollapsed((value) => !value);
+            }
+          }}
+        />
+        <main className="legacy-shell__main">
+          <Outlet />
+        </main>
       </div>
-    </SidebarProvider>
+    </div>
   );
 };
 
